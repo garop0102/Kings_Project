@@ -1,0 +1,123 @@
+---
+title: "Data Ingestion and Cleaning"
+author: "Gop Arop"
+date: "10/13/2025"
+warning: false
+editor_options: 
+  chunk_output_type: console
+---
+## Set-Up
+
+```{r}
+
+# Use the 'pacman' package to load/install packages as needed.
+# This makes the script more reproducible on other machines.
+pacman::p_load(
+  tidyverse, # Core suite of packages for data manipulation and visualization
+  jsonlite,  # The primary package for working with JSON in R
+  httr,      # For making HTTP requests to get data from URLs
+  janitor,    # For cleaning data and column names
+  lubridate,  # To convert birth date column into date data type 
+  readr.      # To save full dataset into computer 
+)
+```
+
+## Data Ingestion
+
+```{r}
+
+base_url <- "https://raw.githubusercontent.com/kingsanalytics/data_science_project_sep_2025/refs/heads/dev/api_data_files/"
+
+file_names <- c("international_box_player_season.json", "nba_box_player_season.json", "player.json")
+urls <- paste0(base_url, file_names)
+```
+
+```{r}
+# Ingest the JSON files directly from the URLs into a list of data frames.
+# Using `fromJSON` with `flatten = TRUE` helps simplify nested JSON structures.
+# A `tryCatch` block is included to handle potential network errors gracefully.
+raw_data_list <- map(urls, ~{
+  tryCatch({
+    fromJSON(.x, flatten = TRUE)
+  }, error = function(e) {
+    message(paste("Failed to read or parse URL:", .x))
+    message("Error message:", e$message)
+    return(NULL) # Return NULL if an error occurs
+  })
+})
+
+# Assign names to the list elements for easier access
+names(raw_data_list) <- tools::file_path_sans_ext(file_names)
+
+# Check if data was loaded successfully before proceeding
+if(any(sapply(raw_data_list, is.null))) {
+  stop("One or more files could not be loaded. Please check URLs and network connection.")
+}
+
+```
+
+## Data Cleaning
+
+```{r}
+
+# Convert the list elements into separate tibbles
+players_df <- as_tibble(raw_data_list$player)
+nba_stats_df <- as_tibble(raw_data_list$nba_box_player_season)
+international_stats_df <- as_tibble(raw_data_list$international_box_player_season)
+
+```
+
+```{r}
+## Standardization
+
+players_df <- players_df |>
+  mutate(first_name = tolower(first_name), last_name = tolower(last_name))
+
+nba_stats_df <- nba_stats_df |>
+  mutate(first_name = tolower(first_name), last_name = tolower(last_name))
+
+international_stats_df <- international_stats_df |>
+   mutate(first_name = tolower(first_name), last_name = tolower(last_name))
+
+```
+
+
+```{r}
+## Create unique player IDs
+set.seed(123) # Optional: for reproducibility
+unique_ids <- sample(100000:999999, nrow(players_df), replace = FALSE)
+
+# Assign the IDs
+players_df <- players_df |>
+  mutate(player_id = unique_ids)
+
+```
+
+```{r}
+## Join IDs back to the original dataframes
+
+# Add player_ids to nba_stats_df
+nba_stats_df <- nba_stats_df |>
+  left_join(players_df, by = c("first_name", "last_name"))
+
+# Add player_ids to international_stats_df
+international_stats_df <- international_stats_df |>
+  left_join(players_df, by = c("first_name", "last_name"))
+
+# Check if there are any duplicates in the player_id
+if(any(duplicated(players_df$player_id))) {
+  warning("There are duplicate player IDs!")
+}
+```
+
+```{r}
+combined_stats_df <- bind_rows(nba_stats_df, international_stats_df)
+combined_stats_df <- combined_stats_df |>
+  select(-first_name, -last_name, -birth_date)
+full_data <- inner_join(players_df, combined_stats_df, by = "player_id")
+```
+
+```{r}
+write_csv(full_data, "~/Documents/R-Projects/Kings_Project/Data/cleaned_kings_player_data.csv")
+```
+
