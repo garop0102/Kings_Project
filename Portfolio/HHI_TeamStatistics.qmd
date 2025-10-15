@@ -1,0 +1,95 @@
+---
+title: "HHI_TeamStatistics"
+format: html
+---
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+
+#Load data sets
+```{r}
+# Team summary data
+team_summary <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Team Summaries.csv")
+team_summary <- team_summary[complete.cases(team_summary$w), ]
+team_summary <- team_summary |>
+  filter(lg != "ABA")
+
+# Removes league average
+team_summary <- subset(team_summary, team != "League Average")
+
+# Team totals data
+team_totals <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Team Totals.csv")
+team_totals <- team_totals[complete.cases(team_totals$g), ]
+team_totals <- subset(team_totals, team != "League Average")
+team_totals <- team_totals |>
+  filter(lg != "ABA")
+```
+
+
+#Add conference column
+```{r}
+# Create column for conference
+teams_split <- mutate(team_summary, conference = "") |>
+  filter(season >= 1971 & season <= 2023)
+
+
+# Determine whether or not these teams belong in the east or west
+west_teams <- c("Los Angeles Lakers", "Phoenix Suns", "Portland Trail Blazers", "Golden State Warriors", "Oklahoma City Thunder", "Sacramento Kings", "Denver Nuggets", "Los Angeles Clippers", "Utah Jazz", "Dallas Mavericks", "Minnesota Timberwolves", "Memphis Grizzlies", "New Orleans Pelicans","New Orleans Hornets","New Orleans/Oklahoma City Hornets", "San Diego Rockets", "San Francisco Warriors", "Seattle SuperSonics", "Kansas City-Omaha Kings", "Kansas City Kings", "Vancouver Grizzlies", "San Diego Clippers"
+)
+
+teams_split$conference <- ifelse(
+  teams_split$team %in% west_teams |
+  (teams_split$team == "Chicago Bulls" & teams_split$season >= 1970 & teams_split$season <= 1980) |
+  (teams_split$team == "Detroit Pistons" & teams_split$season >= 1970 & teams_split$season <= 1978) |
+  (teams_split$team == "Milwaukee Bucks" & teams_split$season >= 1970 & teams_split$season <= 1980) |
+  (teams_split$team == "Indiana Pacers" & teams_split$season >= 1976 & teams_split$season <= 1979) |
+  (teams_split$team == "Miami Heat" & teams_split$season == 1989) |
+  (teams_split$team == "Charlotte Hornets" & teams_split$season == 1990) |
+  (teams_split$team == "Orlando Magic" & teams_split$season == 1991) |
+  (teams_split$team == "Houston Rockets" & teams_split$season > 1980) |
+  (teams_split$team == "San Antonio Spurs" & teams_split$season >= 1981),
+  "West",
+  "East"
+)
+
+```
+
+
+
+#Calculate HHI and normalized HHI
+```{r}
+# Calculate the normalized HHI function
+calculate_normalized_hhi <- function(teams_split) {
+  # Calculate the HHI for each conference
+  hhi <- teams_split |>
+    group_by(season, conference) |>
+    summarise(HHI = sum((w / sum(w))^2))
+  print(hhi)
+  
+  # Normalize the HHI within each season
+  normalized_hhi <- hhi |>
+    group_by(season)|>
+    mutate(Normalized_HHI = HHI / sum(HHI))
+  
+  return(normalized_hhi)
+}
+
+# Calculate the normalized HHI for each respective conference
+normalized_hhi <- calculate_normalized_hhi(teams_split)
+
+
+hhi_plot <- ggplot(data = normalized_hhi, aes(x = season, y = Normalized_HHI, group = conference, color = conference)) +
+  geom_line(size = 2) +
+  labs(x = "Season", y = "Normalized HHI", title = "Normalized HHI for Each Conference by Season") +
+  theme_minimal()
+hhi_plot
+ggsave("NBA_HHI_plot.jpeg", hhi_plot, width = 7, height = 3.5)
+```
+
+
+
+

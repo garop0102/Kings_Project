@@ -1,0 +1,84 @@
+---
+title: "nba_data"
+format: html
+---
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+```
+
+
+
+# Web scrape for end of season standings
+```{r}
+season_standings <- tibble()
+
+for (year in 1971:2023) {
+  Sys.sleep(4)
+  
+standings_url <- sprintf("https://www.basketball-reference.com/leagues/NBA_%s_standings.html", year)
+
+standings <- read_html(standings_url) |> 
+  html_nodes("table") |>
+  html_table() 
+
+standings_tidy <- bind_rows(standings[[1]], standings[[2]]) |> 
+  unite("Team",
+        c(`Western Conference`,`Eastern Conference`), 
+        na.rm = TRUE) |> 
+  mutate(W = as.numeric(W)) |> 
+  drop_na(W) |> 
+  type_convert(na = c("", "NA","—"))
+
+
+standings_tidy$SEASON <- year
+  
+season_standings <- bind_rows(season_standings, standings_tidy) 
+}
+
+
+
+for (year in 1947:1970) {
+  Sys.sleep(4)
+  league = "NBA"
+  
+  if (between(year, 1947, 1949)){
+  league = "BAA"
+  }
+  
+  standings_url <- sprintf("https://www.basketball-reference.com/leagues/%s_%s_standings.html", league, year)
+
+standings <- read_html(standings_url) |> 
+  html_nodes("table") |>
+  html_table() 
+
+standings_tidy <- bind_rows(standings[[1]]) |> 
+  unite("Team",
+        c(`Team`), 
+        na.rm = TRUE) |> 
+  mutate(W = as.numeric(W)) |> 
+  drop_na(W) |> 
+  type_convert(na = c("", "NA","—"))
+
+standings_tidy$SEASON <- year
+
+season_standings <- bind_rows(season_standings, standings_tidy) 
+}
+```
+
+
+# Standard deviation of win percentage for each season
+```{r}
+winpct_season <- season_standings |>
+  group_by(SEASON) |>
+  summarise(pct_over_500 = 100 * mean(`W/L%` > 0.5,na.rm = TRUE), sd_win_pct = sd(`W/L%`))
+
+winpct_season
+
+```
+
+
+
+

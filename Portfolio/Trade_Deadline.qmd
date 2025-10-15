@@ -1,0 +1,194 @@
+---
+title: "TradeDeadline_Effect"
+format: html
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+```
+
+
+#Mid season scraping from 1971 season and up
+```{r}
+all_midseason_standings <- tibble()
+
+for (year in 1971:2023) {
+  Sys.sleep(4)
+  month = 2
+  day = 1
+  if(year == 1999){
+    month = 3
+    day = 11
+  }
+  else if (year == 2012) {
+    month = 3
+    day = 15
+  } 
+  else if (year == 2021) {
+    month = 3
+    day = 25
+  }
+  
+standings_url <- sprintf("https://www.basketball-reference.com/friv/standings.fcgi?month=%s&day=%s&year=%s&lg_id=NBA&utm_source=direct&utm_medium=Share&utm_campaign=ShareTool", month, day, year)
+
+
+
+standings <- read_html(standings_url) |> 
+  html_nodes("table") |>
+  html_table() 
+
+standings_tidy <- 
+  bind_rows(standings[[1]],standings[[2]]) |> 
+  unite("Conference",
+        c(`Western Conference`,`Eastern Conference`), 
+        na.rm = TRUE) |> 
+  mutate(W = as.numeric(W)) |> 
+  drop_na(W) |> 
+  type_convert(na = c("", "NA","—"))
+
+standings_tidy$Season <- year
+
+all_midseason_standings <- bind_rows(all_midseason_standings, standings_tidy)
+}
+
+write_csv(x = all_midseason_standings,
+  file = "midseason_standings_1971-2023.csv")
+
+```
+
+
+
+#Mid season scraping for 1970 and older seasons
+```{r}
+all_midseason_standings2 <- tibble()
+
+for (year in 1947:1970) {
+  Sys.sleep(4)
+  month = 2
+  day = 1
+  league = "NBA"
+  if (between(year, 1947, 1948)){
+    month = 1
+    day = 20
+    league = "BAA"
+  }
+  if (year == 1949){
+    month = 2
+    day = 10
+    league = "BAA"
+  }
+  if (between(year, 1950, 1964)){
+    month = 2
+    day = 10
+    league = "NBA"
+  }
+
+
+standings_url <- sprintf("https://www.basketball-reference.com/friv/standings.fcgi?month=%s&day=%s&year=%s&lg_id=%s&utm_source=direct&utm_medium=Share&utm_campaign=ShareTool", month, day, year, league)
+
+standings <- read_html(standings_url) |> 
+  html_elements(xpath = '//*[@id="all_standings"]/div')
+
+standings_tidy <-
+  standings[[1]] |> 
+    html_table() |>
+    rename(
+      Team = X1, 
+      W = X2,
+      L = X3, 
+      `W/L%` = X4,
+      GB = X5,
+      PW = X6,
+      PL = X7,
+      `PS/G` = X8,
+      `PA/G` = X9
+      ) |>
+    mutate(W = as.numeric(W)) |> 
+    drop_na(W) |> 
+    type_convert(na = c("", "NA","—"))
+
+standings_tidy$Season <- year
+
+all_midseason_standings2 <- bind_rows(all_midseason_standings2, standings_tidy)
+}
+write_csv(x = all_midseason_standings2,
+  file = "midseason_standings_1947-1970.csv")
+
+```
+
+
+#Scrape code for team statistics
+```{r}
+all_midseason_statistics <- tibble()
+
+for (year in 1947:2023) {
+  Sys.sleep(4)
+  month = 2
+  day = 1
+  league = "NBA"
+  if (between(year, 1947, 1948)){
+    month = 1
+    day = 20
+    league = "BAA"
+  }
+  if (year == 1949){
+    month = 2
+    day = 10
+    league = "BAA"
+  }
+  if (between(year, 1950, 1964)){
+    month = 2
+    day = 10
+    league = "NBA"
+  }
+  if(year == 1999){
+    month = 3
+    day = 11
+    league = "NBA"
+  }
+  else if (year == 2012) {
+    month = 3
+    day = 15
+    league = "NBA"
+  } 
+  else if (year == 2021) {
+    month = 3
+    day = 25
+    league = "NBA"
+  }
+  
+standings_url <- sprintf("https://www.basketball-reference.com/friv/standings.fcgi?month=%s&day=%s&year=%s&lg_id=%s&utm_source=direct&utm_medium=Share&utm_campaign=ShareTool", month, day, year, league)
+
+
+
+standings <- read_html(standings_url) |> 
+  html_nodes("table") |>
+  html_table() 
+
+if(between(year, 1947, 1970)){
+  team_tidy <- standings[[1]]
+}
+else if (between(year, 1971,2023)){
+  team_tidy <- standings[[3]]
+}
+
+all_midseason_statistics <- bind_rows(all_midseason_statistics, team_tidy)
+}
+
+write_csv(x = all_midseason_statistics,
+  file = "midseason_statistics_1947-2023.csv")
+```
+
+
+
+
+
+
+
+
+
+
+

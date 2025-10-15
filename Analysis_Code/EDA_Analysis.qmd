@@ -1,0 +1,216 @@
+---
+title: "Exploratory Data Analysis"
+author: "Gop Arop"
+date: "10/13/2025"
+warning: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+pacman::p_load(tidyverse,
+               scales,
+               tidyr,
+               patchwork,
+               lubridate,
+               here,
+               readr)
+```
+
+```{r}
+path <- "~/Documents/R-Projects/Kings_Project/Data/cleaned_kings_player_data.csv"
+full_data <- read_csv(path, show_col_types = FALSE)
+```
+
+# Cleaning of CSV 
+```{r}
+full_data <- full_data |>
+  mutate(
+    minutes = as.numeric(minutes),
+    three_attempt_rate = as.numeric(three_attempt_rate),
+    three_pct = as.numeric(three_pct),
+    free_throw_rate = as.numeric(free_throw_rate),
+    internal_box_plus_minus = as.numeric(internal_box_plus_minus),
+    points_per_36 = as.numeric(points_per_36),
+    birth_date = ymd(birth_date)
+  )
+```
+
+```{r}
+# derive age at season end (season is season end year)
+full_data <- full_data %>%
+  mutate(age = if_else(!is.na(birth_date) & !is.na(season),
+                       as.integer(season - year(birth_date)),
+                       NA_integer_))
+```
+
+# Establishing my helper functions: skewness, iqr outlier flags, percentiles 
+```{r}
+skewness <- function(x, na.rm = TRUE) {
+  x <- x[!is.na(x)]
+  if(length(x) < 3) return(NA_real_)
+  m <- mean(x)
+  s <- sd(x)
+  mean((x - m)^3) / (s^3)
+}
+
+iqr_outliers <- function(x) {
+  q <- quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
+  iqr <- q[2] - q[1]
+  lower <- q[1] - 1.5 * iqr
+  upper <- q[2] + 1.5 * iqr
+  (x < lower) | (x > upper)
+}
+
+pct_outliers <- function(x, lower = 0.01, upper = 0.99) {
+  ql <- quantile(x, lower, na.rm = TRUE)
+  qu <- quantile(x, upper, na.rm = TRUE)
+  (x < ql) | (x > qu)
+}
+```
+
+```{r}
+# variables of interest
+vars <- c("three_attempt_rate","three_pct","free_throw_rate","internal_box_plus_minus","age","points_per_36")
+```
+
+```{r}
+# quick numeric summary function
+summarize_var <- function(df, var) {
+  x <- df[[var]]
+  tibble(
+    variable = var,
+    n = sum(!is.na(x)),
+    mean = mean(x, na.rm=TRUE),
+    median = median(x, na.rm=TRUE),
+    sd = sd(x, na.rm=TRUE),
+    skew = skewness(x),
+    p1 = quantile(x, 0.01, na.rm=TRUE),
+    p5 = quantile(x, 0.05, na.rm=TRUE),
+    p10 = quantile(x, 0.10, na.rm=TRUE),
+    p25 = quantile(x, 0.25, na.rm=TRUE),
+    p75 = quantile(x, 0.75, na.rm=TRUE),
+    p90 = quantile(x, 0.90, na.rm=TRUE),
+    p95 = quantile(x, 0.95, na.rm=TRUE),
+    p99 = quantile(x, 0.99, na.rm=TRUE)
+  )
+}
+
+summary_table <- map_dfr(vars, ~summarize_var(full_data, .x))
+print(summary_table)
+```
+
+# Flagging of flag outliers count for each var (IQR & percentile) 
+```{r}
+outlier_flags <- map_dfr(vars, function(v) {
+  x <- full_data[[v]]
+  tibble(
+    variable = v,
+    n_nonmiss = sum(!is.na(x)),
+    n_iqr_outliers = sum(iqr_outliers(x), na.rm=TRUE),
+    pct_iqr_outliers = mean(iqr_outliers(x), na.rm=TRUE),
+    n_pct_outliers = sum(pct_outliers(x, 0.01, 0.99), na.rm=TRUE),
+    pct_pct_outliers = mean(pct_outliers(x, 0.01, 0.99), na.rm=TRUE)
+  )
+})
+print(outlier_flags)
+```
+
+#  Visual distribution checks: histogram + density for each var
+```{r}
+# helper to produce consistent plots (with optional log or percent formatting)
+plot_var <- function(df, var, transform = c("none","log","percent"), bins = 40) {
+  transform <- match.arg(transform)
+  
+  p <- ggplot(df, aes_string(x = var)) +
+    geom_histogram(aes(y = ..density..), bins = bins, alpha = 0.6, fill = "#2b8cbe", color="white") +
+    geom_density(alpha = 0.2) +
+    theme_minimal() + labs(title = var, x = var, y = "density")
+  if(transform == "log") p <- p + scale_x_continuous(trans = "log10")
+  if(transform == "percent") p <- p + scale_x_continuous(labels = scales::percent_format(accuracy = 1))
+  p
+}
+
+```
+
+
+# Minutes-based check
+
+```{r}
+full_data |>
+  filter(!is.na(minutes) & !is.na(three_pct)) |>
+  mutate(min_bin = cut(minutes, breaks = c(0,100,200,400,600,800,1200, Inf), right = FALSE)) |>
+  group_by(min_bin) |>
+  summarise(
+    n = n(),
+    mean_3p = mean(three_pct, na.rm=TRUE),
+    sd_3p = sd(three_pct, na.rm=TRUE),
+    se_3p = sd_3p / sqrt(n)
+  ) |>
+  arrange(min_bin) |>      
+  print(n = Inf)
+
+```
+
+```{r}
+# plot sd_3p vs min_bin
+full_data |>
+  filter(!is.na(minutes) & !is.na(three_pct)) |>
+  mutate(min_bin = cut(minutes, breaks = c(0,100,200,400,600,800,1200, Inf), right = FALSE)) |>
+  group_by(min_bin) |>
+  summarise(n = n(), sd_3p = sd(three_pct, na.rm=TRUE)) |>
+  ggplot(aes(x = as.character(min_bin), y = sd_3p, label = n)) +
+  geom_col() + geom_text(nudge_y = 0.01) + theme_minimal() +
+  labs(x = "minutes bin", y = "sd(3P%)", title = "3P% variability by sample size (minutes bins)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+min_minutes <- 400
+df_min400 <- full_data |> filter(!is.na(minutes) & minutes >= min_minutes)
+
+# percentile-based filter: remove extreme 1% tails per variable (applied across all vars)
+df_pctfiltered <- full_data |>
+  filter(
+    between(three_attempt_rate, quantile(three_attempt_rate, 0.01, na.rm=TRUE), quantile(three_attempt_rate, 0.99, na.rm=TRUE)) |
+    is.na(three_attempt_rate)
+  ) # repeat similar filtering if you want to apply it jointly for multiple vars
+
+# quick counts showing effect of filters
+tibble(
+  original_rows = nrow(full_data),
+  rows_min400 = nrow(df_min400),
+  pct_kept_min400 = nrow(df_min400) / nrow(full_data),
+  rows_pctfiltered = nrow(df_pctfiltered),
+  pct_kept_pctfiltered = nrow(df_pctfiltered) / nrow(full_data)
+) |> print()
+```
+
+
+```{r}
+p1 <- plot_var(df_min400, "three_attempt_rate", transform = "percent")
+p2 <- plot_var(df_min400, "three_pct", transform = "percent")
+p3 <- plot_var(df_min400, "free_throw_rate", transform = "percent")
+p4 <- plot_var(df_min400, "internal_box_plus_minus", transform = "none")
+p5 <- plot_var(df_min400, "age", transform = "none")
+p6 <- plot_var(df_min400, "points_per_36", transform = "none")
+
+
+dist_grid <- (p1 + p2 + p3) / (p4 + p5 + p6) +
+  plot_annotation(
+    title = "Distribution Checks — 3P Rate, 3P%, FTr, IBPM, Age, Points/36",
+    subtitle = "Use minutes cutoff (e.g. >=400) to reduce noise from low-sample players",
+    caption = "Created: King project EDA"
+  ) & theme(plot.title = element_text(size = 16, face = "bold"))
+
+print(dist_grid)
+
+ggsave("distribution_grid_patchwork.png", dist_grid, width = 14, height = 8, dpi = 300)
+```
+
+```{r}
+write_csv(df_min400, "~/Documents/R-Projects/Kings_Project/Data/df_min400.csv")
+write_csv(df_pctfiltered, "~/Documents/R-Projects/Kings_Project/Data/df_pctfiltered.csv")
+```
+

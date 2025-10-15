@@ -1,0 +1,48 @@
+---
+title: "Other_TeamStatistics"
+format: html
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(tidyr)
+```
+
+```{r}
+# NFL Elo Data
+nfl_elo <- read_csv("~/Documents/GitHub/nba_parity/nfl_games.csv")
+nfl_teams <- unique(c(as.character(nfl_elo$team1), as.character(nfl_elo$team2)))
+
+
+# MLB Elo Data
+mlb_elo <- read_csv("~/Documents/GitHub/nba_parity/mlb-elo/mlb_elo.csv")
+mlb_elo <- mlb_elo[complete.cases(mlb_elo$elo1_post, mlb_elo$elo2_post), ]
+# NBA Elo Data
+nba_elo <- read_csv("~/Documents/GitHub/nba_parity/archive-2 (2)/nba_elo.csv")
+nba_elo <- nba_elo[complete.cases(nba_elo$elo1_post, nba_elo$elo2_post), ]
+```
+
+
+#Extract last row of every team in each season
+```{r}
+last_elo_ratings <- nfl_elo |>
+  group_by(team1, season) |>
+  filter(!is.na(elo1)) |>
+  slice(n()) |>
+  select(team = team1, season, elo = elo1) |>
+  bind_rows(
+      nfl_elo |>
+      group_by(team2, season) |>
+      filter(!is.na(elo2)) |>
+      slice(n()) |>
+      select(team = team2, season, elo = elo2)
+  ) |>
+  distinct()
+
+```
+
+
+

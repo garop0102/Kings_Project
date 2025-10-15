@@ -1,0 +1,94 @@
+---
+title: "NBA_TeamStatistics"
+format: html
+---
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+
+```{r}
+team_summary <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Team Summaries.csv")
+team_summary <- team_summary[complete.cases(team_summary$w), ]
+team_summary <- team_summary |>
+  filter(lg != "ABA")
+
+# Removes league average
+team_summary <- subset(team_summary, team != "League Average")
+
+opponent_totals <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Opponent Totals.csv")
+opponent_totals <- opponent_totals[complete.cases(opponent_totals$g), ]
+opponent_totals <- subset(opponent_totals, team != "League Average")
+opponent_totals <- opponent_totals |>
+  filter(lg != "ABA")
+
+team_totals <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Team Totals.csv")
+team_totals <- team_totals[complete.cases(team_totals$g), ]
+team_totals <- subset(team_totals, team != "League Average")
+team_totals <- team_totals |>
+  filter(lg != "ABA")
+
+team_totals <- cbind(team_totals, opponent_totals$opp_pts)
+```
+
+
+# Group up by seasons & calculate measurement variables
+```{r}
+team_summary$win_pct <- team_summary$w /  (team_summary$w + team_summary$l)
+
+pct_over_500_season <- team_summary |>
+  group_by(season) |>
+  summarise(pct_over_500 = 100 * mean(win_pct > 0.5,na.rm = TRUE), sd_win_pct = sd(win_pct))
+
+```
+
+
+```{r}
+std_win_plot <- ggplot(data = pct_over_500_season, aes(x = season, y = sd_win_pct)) + geom_point(color = "blue") + 
+  stat_smooth(span = 0.2, color = "red", se = FALSE) + labs(x = "Seasons", y = "Standard Deviation of Win Percentage") + ggtitle("Variability of Win Percentage for Each NBA Season")
+std_win_plot <- std_win_plot + theme_bw()
+std_win_plot
+ggsave("St_Win_Pct.jpeg", std_win_plot, width = 7, height = 3.5)
+```
+
+
+# Group up by team & calculate standard deviation
+```{r}
+team_pt_diff <- team_totals |>
+  group_by(team, season) |>
+  summarise(pts_diff = sum(pts) - sum(`opponent_totals$opp_pts`))
+
+avg_pt_diff <- (team_pt_diff$pts_diff / (team_totals$g))
+team_pt_diff <- cbind(team_pt_diff, avg_pt_diff)
+colnames(team_pt_diff)[4] = "avg_pt_diff"
+
+new_Season <- team_pt_diff |>
+  filter(season == 2023)
+
+print(mean(new_Season$avg_pt_diff))
+
+standard_dev_pt <- team_pt_diff |>
+  group_by(season) |>
+  summarise(sd_pt_diff = sd(avg_pt_diff), avg_pt = mean(avg_pt_diff))
+
+point_diff_plot <- ggplot(data = standard_dev_pt, aes(x = season, y = sd_pt_diff)) + geom_point(color = "red") + 
+  annotate('text', x = 1955 - 1, y = 1.523247, label = 'A', fontface = "bold") + 
+  annotate('text', x = 1974 - 0.8, y = 3.932866 + 0.15, label = 'B', fontface = "bold") + 
+  annotate('text', x = 1977 - 0.8, y = 3.263846 + 0.15, label = 'C', fontface = "bold") +
+  annotate('text', x = 1980 - 0.95, y = 4.620410 + 0.1, label = 'D', fontface = "bold") +
+  annotate('text', x = 1982, y = 4.479679 - 0.2, label = 'E', fontface = "bold") +
+  annotate('text', x = 1984 - 1, y = 3.547342 + 0.05, label = 'F', fontface = "bold") +
+  annotate('text', x = 1999 - 1.2, y = 2.869802, label = 'G', fontface = "bold") +
+  annotate('text', x = 2002 - 0.2, y = 4.250508 - 0.185, label = 'H', fontface = "bold") +
+  stat_smooth(span = 0.1, color = "blue", se= FALSE) + labs(x = "Seasons", y = "Standard Deviation of Point Differential") + ggtitle("Standard Deviation of Average Point Differential for Each NBA Season")
+point_diff_plot <- point_diff_plot + theme_bw()
+point_diff_plot
+ggsave("Point_diff_plot.jpeg", point_diff_plot, width = 7, height = 3.5)
+
+period_pt_diff <- standard_dev_pt |>
+  mutate(period = (season - 1947) %/% 10)
+```
+

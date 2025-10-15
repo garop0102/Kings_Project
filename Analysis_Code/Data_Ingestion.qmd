@@ -115,6 +115,32 @@ combined_stats_df <- bind_rows(nba_stats_df, international_stats_df)
 combined_stats_df <- combined_stats_df |>
   select(-first_name, -last_name, -birth_date)
 full_data <- inner_join(players_df, combined_stats_df, by = "player_id")
+  
+```
+
+```{r}
+full_data <- full_data |>
+  mutate(
+    minutes = as.numeric(minutes),
+    games = as.integer(games),
+    fga = (two_points_attempted |> as.numeric()) + (three_points_attempted |> as.numeric()),
+    fta = as.numeric(free_throws_attempted),
+    three_pct = ifelse(three_points_attempted > 0, three_points_made / three_points_attempted, NA_real_),
+    birth_date = ymd(birth_date),
+    three_attempt_rate = ifelse(fga > 0, three_points_attempted / fga, NA_real_), 
+    # share of shots that are 3s
+    free_throw_rate = ifelse(fga > 0, fta / fga, NA_real_), # FTr = FTA / FGA
+    points = as.numeric(points),
+    points_per_36 = ifelse(minutes > 0, points / minutes * 36, NA_real_),
+    minutes_per_game = ifelse(games > 0, minutes / games, NA_real_),
+    steals = as.numeric(steals), blocks = as.numeric(blocked_shots), deflections = as.numeric(deflections),
+    steals_per_36 = ifelse(minutes > 0, steals / minutes * 36, NA_real_),
+    blocks_per_36 = ifelse(minutes > 0, blocks / minutes * 36, NA_real_),
+    deflections_per_36 = ifelse(minutes > 0, deflections / minutes * 36, NA_real_),
+    # simple possessions estimate per-season (use with care)
+    possessions = pmax(1, (fga - offensive_rebounds + turnovers + 0.4*fta) |> as.numeric()),
+    points_per_100pos = ifelse(possessions > 0, points / possessions * 100, NA_real_)
+  )
 ```
 
 ```{r}

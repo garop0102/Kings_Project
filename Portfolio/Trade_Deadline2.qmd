@@ -1,0 +1,127 @@
+---
+title: "Trade_Deadline2"
+format: html
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+library(readr)
+
+# Load team_totals dataframe
+team_totals <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Team Totals.csv")
+team_totals <- team_totals[complete.cases(team_totals$g), ]
+team_totals <- team_totals |>
+  filter(lg != "ABA")
+
+# Load team_summary dataframe
+team_summary <- read_csv("~/Documents/GitHub/nba_parity/archive-2/Team Summaries.csv")
+team_summary <- team_summary[complete.cases(team_summary$w), ]
+team_summary <- team_summary |>
+  filter(lg != "ABA")
+# Removes league average
+team_summary <- subset(team_summary, team != "League Average")
+# Addas win percentage column
+team_summary$win_pct <- team_summary$w /  (team_summary$w + team_summary$l)
+
+# Loads percentage of teams over .500 mark
+pct_over_500_season <- team_summary |>
+  group_by(season) |>
+  summarise(pct_over_500 = 100 * mean(win_pct > 0.5,na.rm = TRUE), sd_win_pct = sd(win_pct))
+
+```
+
+
+#Load the 2 different data sets
+```{r}
+midseason_1947_1970 <- read_csv("midseason_standings_1947-1970.csv")
+midseason_1971_2023 <- read_csv("midseason_standings_1971-2023.csv")
+midseason_1971_2023 <- midseason_1971_2023 |>
+  rename("Team" = "Conference")
+```
+
+
+
+```{r}
+#Combine rows into 1 main data set
+final_midseason_standings <- rbind(midseason_1947_1970,midseason_1971_2023)
+```
+
+
+#Add win percentage column and delete other win percentage column
+```{r}
+final_midseason_standings$Win_Pct <- final_midseason_standings$W / (final_midseason_standings$W + final_midseason_standings$L)
+final_midseason_standings <- final_midseason_standings[,-4]
+```
+
+
+#Standard deviation of percentage of win percentage per season
+```{r}
+midseason_over_500 <- final_midseason_standings |>
+  group_by(Season) |>
+  summarise(pct_over_500_ms = 100 * mean(Win_Pct > 0.5,na.rm = TRUE), sd_win_pct_ms = sd(Win_Pct)) |>
+  rename(season = Season)
+```
+
+
+#Difference in standard deviation of win percentage from mid season to end of season
+```{r}
+season_win_pct_final <- full_join(midseason_over_500, pct_over_500_season, by = "season") |>
+  mutate(diff_sd_win_pct = sd_win_pct - sd_win_pct_ms)
+
+final_win_pct_plot <- ggplot(data = season_win_pct_final, aes(x = season, y = diff_sd_win_pct)) + geom_point() + stat_smooth(span = 0.2, color = "red", se = FALSE) + labs(x = "Season", y = "Difference in Variability of Win Percentage") + ggtitle("Effect of Trade Deadline on Variability of Win Percentage Per Season")
+  
+midseason_1971_2023 |>
+  summarise(mean(W + L))
+  
+approximate_centered_line <- sqrt(0.5*0.5/82) - sqrt(0.5*0.5/46)
+approximate_centered_line
+
+final_win_pct_plot <- final_win_pct_plot + theme_bw() + geom_hline(yintercept = approximate_centered_line, linetype = 2)
+final_win_pct_plot
+
+ggsave("Trade_Deadline_plot.jpeg", final_win_pct_plot)
+```
+
+
+
+
+```{r}
+nteams <- team_summary %>%
+  group_by(season) %>%
+  summarize(num_teams = n_distinct(team)) %>%
+  pull(num_teams)
+nteams <- rev(nteams)
+print(nteams)
+
+ngames <- team_totals %>%
+  group_by(season) %>%
+  filter(team == "League Average") %>%
+  pull(g)
+print(ngames)
+
+nsim = 1000
+sim_season_winperc_sd <- rep(NA, nsim)
+
+for(b in 1:nsim){
+  
+  # suffle all the wins around
+  win_shuffle <- sample(x = rep(c(1,0), length(nteams)*max(ngames)/2))
+  
+  # place into each of the nteams (each row is a team)
+  win_matrix <- matrix(win_shuffle, nr = nteams)
+  
+  # get win percentage for each row
+  win_percentages <- apply(win_matrix, MARGIN = 1, FUN = mean)
+  sim_season_winperc_sd[b] <- sd(win_percentages)
+  
+}
+
+sim_histogram <- hist(sim_season_winperc_sd)
+sim_histogram
+quantile(sim_season_winperc_sd, probs = c(0.025,0.5,0.975))
+```
+
+
