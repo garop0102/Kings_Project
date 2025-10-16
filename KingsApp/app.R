@@ -13,12 +13,8 @@ library(readr)
 library(scales)
 library(htmltools)
 
-# Define the single, correct path to the data file, assuming it's in the 'Data' folder
-data_path <- here::here("Data", "cleaned_kings_player_data.csv") 
-
-
-# Read data
-full_data_raw <- data_path
+data_path <- here::here("cleaned_kings_player_data.csv")
+full_data_raw <- readr::read_csv(data_path, show_col_types = FALSE)
 
 # Preprocess to ensure columns exist / types match your EDA ingestion
 full_data <- full_data_raw |>

@@ -1,11 +1,11 @@
 name: KingsApp
-title:
+title: KingsApp
 username: garop00
 account: garop00
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 15777235
-bundleId: 11043869
+bundleId: 11044003
 url: https://garop00.shinyapps.io/KingsApp/
 version: 1
 asMultiple: FALSE
