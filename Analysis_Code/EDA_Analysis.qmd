@@ -38,7 +38,7 @@ full_data <- full_data |>
 
 ```{r}
 # derive age at season end (season is season end year)
-full_data <- full_data %>%
+full_data <- full_data |>
   mutate(age = if_else(!is.na(birth_date) & !is.na(season),
                        as.integer(season - year(birth_date)),
                        NA_integer_))
@@ -210,7 +210,7 @@ ggsave("distribution_grid_patchwork.png", dist_grid, width = 14, height = 8, dpi
 ```
 
 ```{r}
-write_csv(df_min400, "~/Documents/R-Projects/Kings_Project/Data/df_min400.csv")
-write_csv(df_pctfiltered, "~/Documents/R-Projects/Kings_Project/Data/df_pctfiltered.csv")
+df_min400 <- write_csv(df_min400, "~/Documents/R-Projects/Kings_Project/Data/df_min400.csv")
+pct_filtered <- write_csv(df_pctfiltered, "~/Documents/R-Projects/Kings_Project/Data/df_pctfiltered.csv")
 ```
 

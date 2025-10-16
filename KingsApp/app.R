@@ -2,18 +2,23 @@
 # Saves: place this file in the project root and run via Run App in RStudio
 
 # Load packages
-if(!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-pacman::p_load(shiny, shinythemes, tidyverse, plotly, DT, lubridate, here, readr, scales, htmltools)
+library(shiny)
+library(shinythemes)
+library(tidyverse) # includes dplyr, ggplot2
+library(plotly)
+library(DT)
+library(lubridate)
+library(here)
+library(readr)
+library(scales)
+library(htmltools)
 
-# Robust path: try here() Data folder, fallback to explicit path used in your Rmd
-data_path <- here::here("Data", "cleaned_kings_player_data.csv")
-if(!file.exists(data_path)){
-  data_path <- "~/Documents/R-Projects/Kings_Project/Data/cleaned_kings_player_data.csv"
-}
-if(!file.exists(data_path)) stop("cleaned_kings_player_data.csv not found. Please put it in Data/ or update data_path in app.R")
+# Define the single, correct path to the data file, assuming it's in the 'Data' folder
+data_path <- here::here("Data", "cleaned_kings_player_data.csv") 
+
 
 # Read data
-full_data_raw <- readr::read_csv(data_path, show_col_types = FALSE)
+full_data_raw <- data_path
 
 # Preprocess to ensure columns exist / types match your EDA ingestion
 full_data <- full_data_raw |>
@@ -54,8 +59,8 @@ plot_var <- function(df, var, transform = c("none","log","percent"), bins = 40){
 
 # League-normalization helper (z-scores within league)
 league_norm <- function(df, vars){
-  df %>% group_by(league) |>
-    mutate(across(all_of(vars), ~ (. - mean(.x, na.rm=TRUE)) / (sd(.x, na.rm=TRUE) + 1e-9), .names = "ln_{col}")) %>%
+  df |> group_by(league) |>
+    mutate(across(all_of(vars), ~ (. - mean(.x, na.rm=TRUE)) / (sd(.x, na.rm=TRUE) + 1e-9), .names = "ln_{col}")) |>
     ungroup()
 }
 
@@ -233,12 +238,12 @@ server <- function(input, output, session){
     pid <- sp$player_id
     dfp <- full_data |> filter(player_id == pid) |> arrange(season)
     if(nrow(dfp) == 0) return(NULL)
-    p <- plot_ly(dfp, x = ~season) |> add_lines(y = ~three_pct, name = '3P%') |> add_markers(y = ~three_pct, showlegend = FALSE) %>% add_lines(y = ~free_throw_rate, name = 'FTr', yaxis = 'y2') |> layout(yaxis = list(title = '3P%'), yaxis2 = list(overlaying = 'y', side = 'right', title = 'FTr'), legend = list(orientation = 'h'))
+    p <- plot_ly(dfp, x = ~season) |> add_lines(y = ~three_pct, name = '3P%') |> add_markers(y = ~three_pct, showlegend = FALSE) |> add_lines(y = ~free_throw_rate, name = 'FTr', yaxis = 'y2') |> layout(yaxis = list(title = '3P%'), yaxis2 = list(overlaying = 'y', side = 'right', title = 'FTr'), legend = list(orientation = 'h'))
     p
   })
   
   # Download shortlist
-  output$dl_shortlist <- downloadHandler(filename = function() paste0('kings_shortlist_', Sys.Date(), '.csv'), content = function(file){ df <- if(isTruthy(df_scored())) df_scored()$shortlist else tibble(); readr::write_csv(df, file) })
+  output$dl_shortlist <- downloadHandler(filename = function() paste0('kings_shortlist_', Sys.Date(), '.csv'), content = function(file){ df <- if(isTruthy(tdf_scored())) df_scored()$shortlist else tibble(); readr::write_csv(df, file) })
   
 }
 

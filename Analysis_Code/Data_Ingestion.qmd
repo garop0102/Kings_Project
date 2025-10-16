@@ -144,6 +144,6 @@ full_data <- full_data |>
 ```
 
 ```{r}
-write_csv(full_data, "~/Documents/R-Projects/Kings_Project/Data/cleaned_kings_player_data.csv")
+full_data <- write_csv(full_data, "~/Documents/R-Projects/Kings_Project/Data/cleaned_kings_player_data.csv")
 ```
 
