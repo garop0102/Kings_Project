@@ -17,7 +17,7 @@ The final report and presentation of findings are delivered via an interactive w
 | Component | Description | Access Link |
 | :--- | :--- | :--- |
 | **Interactive Report (ShinyApp)** | The full analysis, EDA visualizations, and final recommendations in an interactive format. | https://garop00.shinyapps.io/KingsApp/ |
-| **Reproducible Code** | All scripts used for data processing, metric creation, and the ShinyApp code. | See the `Analysis_Code/` and `KingsApp/` folders below. |
+| **Reproducible Code** | All scripts used for data processing, metric creation, and the ShinyApp code. | See the `Analysis_Code/` and `KingsApp/` folders above. |
 
 ---
 
