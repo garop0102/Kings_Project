@@ -3,7 +3,7 @@
 ## Project Overview
 This project was developed for the Sacramento Kings Analytics Staff to identify high-potential basketball players currently competing in major European leagues (EuroLeague, EuroCup, Spain - ACB, and Italy - Liga A) who should be prioritized as NBA scouting targets.
 
-The objective was to leverage mock data from disparate sources (simulating real-world vendor data) to perform robust data ingestion, cleaning, exploratory data analysis (EDA), and finally deliver a clear, data-driven recommendation report.
+The objective was to leverage mock data from disparate sources to perform robust tasks such as data ingestion, data cleaning, exploratory data analysis (EDA), and a clear and interactive shiny application website.
 
 ## Final Recommendations (Executive Summary)
 - Eddie Siva (31, Seminoles — Italy) — Very efficient, high-volume 3-point shooter who also gets to the line. Fits as an immediate floor-spacing guard who can contribute off the bench or as a rotation scorer.
