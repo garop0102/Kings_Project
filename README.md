@@ -6,6 +6,7 @@ This project was developed for the Sacramento Kings Analytics Staff to identify 
 The objective was to leverage mock data from disparate sources to perform robust tasks such as data ingestion, data cleaning, exploratory data analysis (EDA), and a clear and interactive shiny application website.
 
 ## Final Recommendations (Executive Summary)
+- Sundiata Ladurner (26, Redhawks — Spain ACB) — A defensive specialist with elite activity rates and strong internal impact metrics. Despite limited perimeter shooting, Ladurner’s defensive actions per 36 minutes rank among the best in the dataset, and his ability to draw contact (high FTr) adds value in transition and interior play.
 - Eddie Siva (31, Seminoles — Italy) — Very efficient, high-volume 3-point shooter who also gets to the line. Fits as an immediate floor-spacing guard who can contribute off the bench or as a rotation scorer.
 - Oleksiy Dime (28, Broncos — EuroLeague) — Outstanding three-point accuracy at a high volume with strong overall offensive impact. Valuable as a potential stretch scorer in a spacing role.
 - Mac Sanli (32, Nittany Lions — EuroLeague) — Veteran floor-spacer with strong 3P% and exceptional free-throw aggressiveness; a safe short-term fit for shooting needs.
