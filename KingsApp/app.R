@@ -1,6 +1,3 @@
-# app.R - Revised Shiny app for Kings scouting (fixed distribution grid + EDA alignment)
-# Saves: place this file in the project root and run via Run App in RStudio
-
 # Load packages
 library(shiny)
 library(shinythemes)
@@ -13,7 +10,7 @@ library(readr)
 library(scales)
 library(htmltools)
 
-data_path <- here::here("cleaned_kings_player_data.csv")
+data_path <- here::here("KingsApp/cleaned_kings_player_data.csv")
 full_data_raw <- readr::read_csv(data_path, show_col_types = FALSE)
 
 # Preprocess to ensure columns exist / types match your EDA ingestion
